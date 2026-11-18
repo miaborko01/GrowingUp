@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72290b2a268e24cc6a7b018068d76135, type: 3}
+  m_Name: AgeSettings
+  m_EditorClassIdentifier: Assembly-CSharp::GrowingUp.AgeSettings
+  child:
+    rigScale: 0.65
+    eyeHeight: 1.05
+    bodyRadius: 0.15
+    walkSpeed: 1.6
+    runMultiplier: 1.5
+    maxStep: 0.25
+    jumpForce: 2.8
+    volumeProfile: {fileID: 11400000, guid: 029b56aecddd44111bf82ae8224cc4c5, type: 2}
+    fog: 0
+    fogColor: {r: 0.62, g: 0.66, b: 0.7, a: 1}
+    fogDensity: 0
+    sparkles: 1
+    lowPassCutoff: 22000
+    natureGain: 1.4
+    musicVolume: 0.35
+    music: {fileID: 0}
+  adult:
+    rigScale: 1
+    eyeHeight: 1.65
+    bodyRadius: 0.22
+    walkSpeed: 1.1
+    runMultiplier: 1.5
+    maxStep: 0.3
+    jumpForce: 2
+    volumeProfile: {fileID: 11400000, guid: 8a513beaa7bcf4d1183c1f2bae1d1b22, type: 2}
+    fog: 1
+    fogColor: {r: 0.58, g: 0.62, b: 0.66, a: 1}
+    fogDensity: 0.035
+    sparkles: 0
+    lowPassCutoff: 1400
+    natureGain: 0.45
+    musicVolume: 0.25
+    music: {fileID: 0}
+  transitionDuration: 3
+  transitionCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4

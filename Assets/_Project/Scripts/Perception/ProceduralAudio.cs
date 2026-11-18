@@ -41,6 +41,8 @@ namespace GrowingUp
         public int seed = 1;
         public bool keepExistingClip = true;
         public bool playOnStart = true;
+        [Tooltip("If off, another script (e.g. AgeController for music) sets the AudioSource volume.")]
+        public bool controlVolume = true;
 
         const int Rate = 22050;
         AudioSource _src;
@@ -53,7 +55,7 @@ namespace GrowingUp
                 _src.clip = Generate(kind, seed);
             }
             _src.playOnAwake = false;
-            _src.volume = baseVolume * PerceptionMix.Gain(category);
+            if (controlVolume) _src.volume = baseVolume * PerceptionMix.Gain(category);
         }
 
         void Start()
@@ -63,7 +65,7 @@ namespace GrowingUp
 
         void Update()
         {
-            _src.volume = baseVolume * PerceptionMix.Gain(category);
+            if (controlVolume) _src.volume = baseVolume * PerceptionMix.Gain(category);
         }
 
         public void PlayOneShot()
