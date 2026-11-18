@@ -154,6 +154,14 @@ namespace GrowingUp.EditorTools
             Box("DoorHandle_In", hinge, new Vector3(DoorHalf * 2f - 0.15f, 1.0f, -0.07f), new Vector3(0.05f, 0.18f, 0.05f), M.iron, false, true);
             handle.name = "DoorHandle";
 
+            // Step 5: age-dependent door behaviour + stuck/locked rattle sound (3D, at the handle)
+            var hd = hinge.gameObject.AddComponent<HouseDoor>();
+            hd.handle = handle.transform;
+            var snd = new GameObject("LockedDoorSound");
+            snd.transform.SetParent(handle.transform, false);
+            WorldBuilder.AddAudio(snd, ProceduralAudio.Kind.DoorLocked, ProceduralAudio.Category.Sfx, 0.9f, 5, 0.5f, 12f, true, false, false);
+            hd.lockedSound = snd.GetComponent<ProceduralAudio>();
+
             foreach (var t in house.GetComponentsInChildren<Transform>(true))
                 if (!t.IsChildOf(hinge))
                     GameObjectUtility.SetStaticEditorFlags(t.gameObject, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
