@@ -140,3 +140,10 @@ crashlytics-build.properties
 *.apk
 *_BackUpThisFolder_ButDontShipItWithYourGame/
 mono_crash.*.json
+
+# Local junk: Unity crash dumps, builds, macOS metadata
+mono_crash.*
+*.apk
+*.aab
+/MetaQuest*_BackUpThisFolder_ButDontShipItWithYourGame/
+.DS_Store
