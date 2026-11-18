@@ -319,6 +319,7 @@ namespace GrowingUp.EditorTools
             var marker = new GameObject("GrowUpSpot");
             marker.transform.SetParent(root, false);
             marker.transform.position = c;
+            marker.AddComponent<GrowUpTrigger>().radius = 3.5f; // step 4: walking in here makes the child grow up
             SetStatic(root.gameObject);
             GameObjectUtility.SetStaticEditorFlags(marker, 0);
         }
