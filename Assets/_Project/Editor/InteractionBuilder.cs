@@ -23,6 +23,7 @@ namespace GrowingUp.EditorTools
             BuildRiverCrossing();
             BuildBird();
             BuildDandelion();
+            BuildFairyRing();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }
 
@@ -152,6 +153,68 @@ namespace GrowingUp.EditorTools
             m.SetFloat("_ZWrite", 0); m.renderQueue = 3000; m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        // ---------------------------------------------------------------- 4. fairy ring
+        [MenuItem("Growing Up/Build Interactions/4 Fairy Ring")]
+        public static void BuildFairyRing()
+        {
+            var root = StationRoot("FairyRing");
+            var c = WorldBuilder.FairyRingCenter;
+            const int count = 9; const float radius = 0.45f; const float mScale = 0.75f;
+            int[] missing = { 1, 4, 7 };
+            var glowMat = WorldBuilder.EmissiveMat("M_FairySlotGlow", new Color(1f, 0.85f, 0.45f), new Color(1f, 0.8f, 0.35f) * 2f);
+
+            var ring = new GameObject("Ring").transform; ring.SetParent(root, false);
+            var slots = new Transform[missing.Length]; var glows = new Renderer[missing.Length]; var sparks = new GameObject[missing.Length];
+            int si = 0;
+            for (int i = 0; i < count; i++)
+            {
+                float a = i / (float)count * Mathf.PI * 2f;
+                var p = c + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * radius;
+                if (System.Array.IndexOf(missing, i) >= 0)
+                {
+                    var slot = new GameObject("EmptySpot_" + i).transform; slot.SetParent(ring, false); slot.position = p;
+                    var g = WorldBuilder.Prim(PrimitiveType.Cylinder, "Glow", slot, new Vector3(0, 0.012f, 0), new Vector3(0.13f, 0.002f, 0.13f), glowMat, false, null, true);
+                    g.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    var fz = StaticFuzz(slot, "Sparkle", new Vector3(0, 0.06f, 0), 0.05f, 10, 0.012f, new Color(1f, 0.85f, 0.5f, 0.9f));
+                    var fzMain = fz.main; fzMain.startLifetime = 1.2f; fzMain.loop = true;
+                    var fem = fz.emission; fem.rateOverTime = 8f; fem.SetBursts(new ParticleSystem.Burst[0]);
+                    var fvel = fz.velocityOverLifetime; fvel.enabled = true; fvel.y = new ParticleSystem.MinMaxCurve(0.03f, 0.08f);
+                    slots[si] = slot; glows[si] = g.GetComponent<Renderer>(); sparks[si] = fz.gameObject; si++;
+                }
+                else
+                {
+                    var m = WorldBuilder.Place(WorldBuilder.Nature + "Mushroom_01.prefab", ring, p, R(0, 360), mScale * R(0.9f, 1.1f), false);
+                    WorldBuilder.AddStemCollider(m);
+                }
+            }
+
+            // loose mushrooms scattered around the clearing (one spare)
+            var loose = new GrabbableItem[4];
+            for (int k = 0; k < loose.Length; k++)
+            {
+                float a = 0.7f + k * 1.55f + R(-0.2f, 0.2f), d = R(0.9f, 1.25f);
+                var p = c + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * d + Vector3.up * 0.01f;
+                var m = WorldBuilder.Place(WorldBuilder.Nature + "Mushroom_01.prefab", root, p, R(0, 360), mScale, true);
+                m.name = "LooseMushroom_" + k + " (grab me)";
+                loose[k] = MakeGrabbable(m, 0.1f, false, 0.05f);
+            }
+
+            var magic = Burst(root, "RingMagic (complete)", new Color(1f, 0.9f, 0.55f, 1f), new Color(0.75f, 1f, 0.7f, 1f),
+                160, 0.1f, 0.35f, 0.01f, 0.03f, 3.5f, -0.05f, true);
+            magic.transform.position = c + Vector3.up * 0.02f;
+            var msh = magic.shape; msh.shapeType = ParticleSystemShapeType.Circle; msh.radius = radius; msh.radiusThickness = 0.1f;
+            magic.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+            var mm = magic.main; mm.duration = 2.5f;
+            var mem = magic.emission; mem.rateOverTime = 60f; mem.SetBursts(new[] { new ParticleSystem.Burst(0f, 60) });
+
+            var fr = root.gameObject.AddComponent<FairyRing>();
+            fr.slots = slots; fr.slotGlows = glows; fr.slotSparkles = sparks; fr.looseMushrooms = loose;
+            fr.snapSound = Sfx(root, "SFX_MushroomSnap", ProceduralAudio.Kind.Snap, 0.8f, Vector3.zero, 8f);
+            fr.chime = Sfx(root, "SFX_FairyChime", ProceduralAudio.Kind.Chime, 1f, root.InverseTransformPoint(c + Vector3.up * 0.3f), 14f);
+            fr.completeMagic = magic;
+            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
         }
 
         // ---------------------------------------------------------------- 3. dandelion
