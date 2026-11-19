@@ -145,7 +145,7 @@ namespace GrowingUp.EditorTools
             var hinge = new GameObject("DoorHinge").transform;
             hinge.SetParent(house, false);
             hinge.localPosition = new Vector3(-DoorHalf, 0f, Front - 0.04f);
-            hinge.localRotation = Quaternion.Euler(0, 100f, 0); // swung inwards = open
+            hinge.localRotation = Quaternion.identity; // closed (the intro closes it behind the child)
             var door = Box("Door", hinge, new Vector3(DoorHalf, DoorH * 0.5f + 0.01f, 0f), new Vector3(DoorHalf * 2f - 0.02f, DoorH - 0.02f, 0.06f), M.door, true, true);
             for (int k = 0; k < 3; k++)
                 Box("Door_Plank_Gap", hinge, new Vector3(0.28f + k * 0.28f, DoorH * 0.5f, 0.032f), new Vector3(0.015f, DoorH - 0.1f, 0.005f), M.crack, false, true);

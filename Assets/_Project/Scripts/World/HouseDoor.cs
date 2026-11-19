@@ -42,7 +42,7 @@ namespace GrowingUp
 
         void Start()
         {
-            _rig = FindFirstObjectByType<OVRCameraRig>();
+            _rig = FindAnyObjectByType<OVRCameraRig>();
             _doorPanel = transform.Find("Door");
             var age = AgeController.Instance;
             if (age != null)

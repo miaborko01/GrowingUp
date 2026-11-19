@@ -57,8 +57,8 @@ namespace GrowingUp
         void Awake()
         {
             Instance = this;
-            if (cameraRig == null) cameraRig = FindFirstObjectByType<OVRCameraRig>();
-            if (locomotor == null) locomotor = FindFirstObjectByType<FirstPersonLocomotor>();
+            if (cameraRig == null) cameraRig = FindAnyObjectByType<OVRCameraRig>();
+            if (locomotor == null) locomotor = FindAnyObjectByType<FirstPersonLocomotor>();
             if (character == null && locomotor != null) character = locomotor.GetComponent<Oculus.Interaction.Locomotion.CharacterController>();
             if (listenerLowPass == null && cameraRig != null)
             {
