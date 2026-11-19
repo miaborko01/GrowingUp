@@ -5,11 +5,10 @@ using UnityEngine.Events;
 namespace GrowingUp
 {
     /// <summary>
-    /// The front door of the house (put on the DoorHinge). The door itself is part of the world and
-    /// never changes; what changes is what the current player can do with it:
-    ///  - CHILD: the door stands open (they just came out of it).
-    ///  - ADULT: the door is shut and won't open. Reaching for the handle or pushing against it plays
-    ///    a stuck/locked rattle. onAdultTriedDoor is the hook for the ending (fade to black / end text).
+    /// The front door of the house (on World/House/DoorHinge). Part of the world; it never changes per age.
+    ///  - Intro: it stands open, then CloseBehindChild() shuts it with the door-close sound.
+    ///  - Afterwards it stays shut. The ADULT reaching for the handle or pushing against it plays a
+    ///    stuck/locked rattle; onAdultTriedDoor is the hook for the ending (Phase 3).
     /// </summary>
     public class HouseDoor : MonoBehaviour
     {
@@ -17,62 +16,63 @@ namespace GrowingUp
         [Tooltip("Hinge Y angle when open (swung inwards).")]
         public float openAngle = 100f;
         public float closedAngle = 0f;
-        [Tooltip("Seconds to swing between open and closed when the age changes.")]
-        public float swingTime = 1.2f;
+        [Tooltip("Start open (the intro closes it behind the child). Off = start closed.")]
+        public bool startOpen = true;
+        public float closeTime = 0.45f;
         public Transform handle;
 
-        [Header("Trying the locked door (adult)")]
-        [Tooltip("A hand/controller this close (m) to the handle counts as trying the door.")]
-        public float handReach = 0.22f;
-        [Tooltip("The player's body this close (m, horizontal) to the closed door counts as pushing it.")]
-        public float bodyReach = 0.55f;
-        public float cooldown = 1.5f;
+        [Header("Sounds (placeholders: drop real clips on these AudioSources)")]
+        [Tooltip("SFX_DoorClose - played when the door shuts behind the child.")]
+        public AudioSource closeSound;
+        [Tooltip("SFX_DoorLocked - the adult tries the stuck door.")]
         public ProceduralAudio lockedSound;
 
+        [Header("Trying the locked door (adult)")]
+        public float handReach = 0.22f;
+        public float bodyReach = 0.55f;
+        public float cooldown = 1.5f;
+
         [Header("Hooks")]
-        [Tooltip("Invoked every time the ADULT tries the locked door. Ending sequence goes here (later phase).")]
+        [Tooltip("Invoked every time the ADULT tries the locked door. Ending sequence goes here (Phase 3).")]
         public UnityEvent onAdultTriedDoor;
-        public int adultAttempts { get; private set; }
+        public int AdultAttempts { get; private set; }
+        public bool IsClosed { get; private set; }
 
         OVRCameraRig _rig;
         Transform _doorPanel;
-        float _nextTry;
-        Coroutine _swing, _rattle;
-        float _baseAngle;
+        float _nextTry, _baseAngle;
+        Coroutine _rattle;
 
-        void Start()
+        void Awake()
         {
-            _rig = FindAnyObjectByType<OVRCameraRig>();
             _doorPanel = transform.Find("Door");
-            var age = AgeController.Instance;
-            if (age != null)
-            {
-                age.AgeChanged += OnAgeChanged;
-                SetAngle(age.CurrentAge == Age.Child ? openAngle : closedAngle);
-            }
+            SetAngle(startOpen ? openAngle : closedAngle);
+            IsClosed = !startOpen;
         }
 
-        void OnDestroy()
+        void Start() => _rig = FindAnyObjectByType<OVRCameraRig>();
+
+        /// Intro: slam the door shut behind the child.
+        public void CloseBehindChild()
         {
-            if (AgeController.Instance != null) AgeController.Instance.AgeChanged -= OnAgeChanged;
+            if (IsClosed) return;
+            StartCoroutine(CloseRoutine());
         }
 
-        void OnAgeChanged(Age a)
-        {
-            if (_swing != null) StopCoroutine(_swing);
-            _swing = StartCoroutine(Swing(a == Age.Child ? openAngle : closedAngle));
-        }
+        /// Instant (debug skip).
+        public void SetClosedImmediate() { StopAllCoroutines(); SetAngle(closedAngle); IsClosed = true; }
 
-        IEnumerator Swing(float target)
+        IEnumerator CloseRoutine()
         {
             float from = _baseAngle;
-            for (float t = 0f; t < 1f; t += Time.deltaTime / Mathf.Max(0.01f, swingTime))
+            for (float t = 0f; t < 1f; t += Time.deltaTime / Mathf.Max(0.01f, closeTime))
             {
-                SetAngle(Mathf.Lerp(from, target, Mathf.SmoothStep(0f, 1f, t)));
+                SetAngle(Mathf.Lerp(from, closedAngle, t * t)); // accelerating swing, like a slam
                 yield return null;
             }
-            SetAngle(target);
-            _swing = null;
+            SetAngle(closedAngle);
+            IsClosed = true;
+            if (closeSound != null) closeSound.Play();
         }
 
         void SetAngle(float a)
@@ -84,14 +84,11 @@ namespace GrowingUp
         void Update()
         {
             var age = AgeController.Instance;
-            if (age == null || _rig == null || age.CurrentAge != Age.Adult || age.IsTransitioning || _swing != null) return;
+            if (!IsClosed || age == null || _rig == null || age.CurrentAge != Age.Adult || age.IsTransitioning) return;
             if (Time.time < _nextTry) return;
 
             bool tried = false;
-            if (handle != null)
-            {
-                if (Near(_rig.leftHandAnchor, handle.position, handReach) || Near(_rig.rightHandAnchor, handle.position, handReach)) tried = true;
-            }
+            if (handle != null && (Near(_rig.leftHandAnchor, handle.position, handReach) || Near(_rig.rightHandAnchor, handle.position, handReach))) tried = true;
             if (!tried && _doorPanel != null)
             {
                 Vector3 d = _rig.centerEyeAnchor.position - _doorPanel.position; d.y = 0f;
@@ -102,13 +99,13 @@ namespace GrowingUp
 
         static bool Near(Transform t, Vector3 p, float r) => t != null && t.gameObject.activeInHierarchy && (t.position - p).sqrMagnitude < r * r;
 
-        /// Can also be called from an interaction (e.g. a Poke/Grab event on the handle).
+        /// Can also be called from an interaction event (e.g. a Poke on the handle).
         public void TryLockedDoor()
         {
             var age = AgeController.Instance;
             if (age != null && age.CurrentAge != Age.Adult) return;
             _nextTry = Time.time + cooldown;
-            adultAttempts++;
+            AdultAttempts++;
             if (lockedSound != null) lockedSound.PlayOneShot();
             if (_rattle != null) StopCoroutine(_rattle);
             _rattle = StartCoroutine(Rattle());
@@ -121,7 +118,6 @@ namespace GrowingUp
 
         IEnumerator Rattle()
         {
-            // Three small jolts in time with the knocks: the door is stuck in its frame.
             float[] hits = { 0f, 0.16f, 0.30f };
             float start = Time.time;
             while (Time.time - start < 0.45f)

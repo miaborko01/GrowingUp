@@ -32,7 +32,7 @@ namespace GrowingUp
     [RequireComponent(typeof(AudioSource))]
     public class ProceduralAudio : MonoBehaviour
     {
-        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked }
+        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked, DoorClose, Splash, Chirp, Whoosh, Chime, Crunch, Snap }
         public enum Category { Nature, Music, Sfx }
 
         public Kind kind = Kind.Wind;
@@ -88,7 +88,14 @@ namespace GrowingUp
                 case Kind.Birds: d = Birds(rng, 14f); break;
                 case Kind.ChildMusic: d = ChildMusic(rng); break;
                 case Kind.AdultDrone: d = Drone(rng, 16f); break;
-                default: d = DoorLocked(rng); loop = false; break;
+                case Kind.DoorLocked: d = DoorLocked(rng); loop = false; break;
+                case Kind.DoorClose: d = DoorClose(rng); loop = false; break;
+                case Kind.Splash: d = Splash(rng); loop = false; break;
+                case Kind.Chirp: d = Chirp(rng); loop = false; break;
+                case Kind.Whoosh: d = Whoosh(rng); loop = false; break;
+                case Kind.Chime: d = Chime(rng); loop = false; break;
+                case Kind.Crunch: d = Crunch(rng); loop = false; break;
+                default: d = Snap(rng); loop = false; break;
             }
             if (loop && kind != Kind.ChildMusic) d = MakeSeamless(d, (int)(Rate * 0.5f));
             Normalize(d, kind == Kind.Birds ? 0.6f : 0.8f);
@@ -244,6 +251,119 @@ namespace GrowingUp
                     d[s + k] += Mathf.Sin(2f * Mathf.PI * 2300f * t) * Mathf.Exp(-t * 180f) * 0.35f;
                 }
             }
+            return d;
+        }
+
+        static float[] DoorClose(System.Random r)
+        {
+            // short hinge creak, a heavy wooden thud and the latch clicking shut
+            int n = (int)(1.0f * Rate); var d = new float[n];
+            for (int k = 0; k < (int)(0.35f * Rate); k++)
+            {
+                float t = (float)k / Rate, f = 420f + 260f * Mathf.Sin(t * 9f);
+                d[k] += Mathf.Sin(2f * Mathf.PI * f * t + Mathf.Sin(t * 180f) * 2f) * 0.18f * Mathf.Sin(Mathf.PI * t / 0.35f);
+            }
+            int s0 = (int)(0.38f * Rate); float lp = 0f;
+            for (int k = 0; k < (int)(0.5f * Rate) && s0 + k < n; k++)
+            {
+                float t = (float)k / Rate; lp += (Noise(r) - lp) * 0.08f;
+                d[s0 + k] += (Mathf.Sin(2f * Mathf.PI * 62f * t) * 1.2f + lp * 1.5f) * Mathf.Exp(-t * 14f);
+            }
+            int s1 = (int)(0.47f * Rate);
+            for (int k = 0; k < (int)(0.05f * Rate) && s1 + k < n; k++)
+            {
+                float t = (float)k / Rate;
+                d[s1 + k] += Mathf.Sin(2f * Mathf.PI * 2600f * t) * Mathf.Exp(-t * 120f) * 0.4f;
+            }
+            return d;
+        }
+
+        static float[] Splash(System.Random r)
+        {
+            int n = (int)(0.9f * Rate); var d = new float[n]; float lp = 0f, hp = 0f, prev = 0f;
+            for (int k = 0; k < n; k++)
+            {
+                float t = (float)k / Rate; lp += (Noise(r) - lp) * 0.35f; hp = 0.95f * (hp + lp - prev); prev = lp;
+                d[k] += hp * Mathf.Exp(-t * 6f) * Mathf.Min(1f, t * 80f);
+            }
+            for (int b = 0; b < 14; b++) // droplets
+            {
+                int s = (int)((0.08f + Rnd(r) * 0.6f) * Rate); float f = 900f + Rnd(r) * 1800f;
+                for (int k = 0; k < (int)(0.05f * Rate) && s + k < n; k++)
+                {
+                    float t = (float)k / Rate;
+                    d[s + k] += Mathf.Sin(2f * Mathf.PI * (f + 6000f * t) * t) * Mathf.Exp(-t * 90f) * 0.35f;
+                }
+            }
+            return d;
+        }
+
+        static float[] Chirp(System.Random r)
+        {
+            int n = (int)(0.75f * Rate); var d = new float[n];
+            for (int c = 0; c < 3; c++)
+            {
+                int s = (int)((0.04f + c * 0.17f) * Rate), ln = (int)(0.11f * Rate); float ph = 0f, f0 = 2800f + c * 350f;
+                for (int k = 0; k < ln && s + k < n; k++)
+                {
+                    float u = (float)k / ln, f = f0 + 1900f * u + 250f * Mathf.Sin(u * 50f);
+                    ph += 2f * Mathf.PI * f / Rate;
+                    float env = Mathf.Sin(Mathf.PI * u);
+                    d[s + k] += Mathf.Sin(ph) * env * env;
+                }
+            }
+            return d;
+        }
+
+        static float[] Whoosh(System.Random r)
+        {
+            // airy breath swell + rising sparkling bell arpeggio: the dandelion seeds fly away
+            int n = (int)(2.4f * Rate); var d = new float[n]; float lp = 0f;
+            for (int k = 0; k < n; k++)
+            {
+                float t = (float)k / Rate; lp += (Noise(r) - lp) * (0.04f + 0.1f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t / 1.2f)));
+                d[k] += lp * 1.6f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t / 1.4f)) * Mathf.Exp(-Mathf.Max(0f, t - 1.0f) * 2f);
+            }
+            int[] notes = { 84, 88, 91, 96, 100, 103, 108 };
+            for (int i = 0; i < notes.Length; i++) Pluck(d, 0.25f + i * 0.13f, Midi(notes[i]), 1.2f, 0.16f, true);
+            return d;
+        }
+
+        static float[] Chime(System.Random r)
+        {
+            int n = (int)(3.0f * Rate); var d = new float[n];
+            int[] notes = { 72, 76, 79, 84, 88, 91, 96 };
+            for (int i = 0; i < notes.Length; i++) Pluck(d, i * 0.11f, Midi(notes[i]), 2.2f, 0.2f, true);
+            for (int i = 0; i < 12; i++) Pluck(d, 0.8f + Rnd(r) * 1.4f, Midi(96 + r.Next(0, 12)), 0.8f, 0.06f, false); // shimmer
+            return d;
+        }
+
+        static float[] Crunch(System.Random r)
+        {
+            int n = (int)(0.7f * Rate); var d = new float[n];
+            foreach (var h in new[] { 0.02f, 0.28f })
+            {
+                int s = (int)(h * Rate); float lp = 0f;
+                for (int k = 0; k < (int)(0.2f * Rate) && s + k < n; k++)
+                {
+                    float t = (float)k / Rate; lp += (Noise(r) - lp) * 0.5f;
+                    float crackle = Rnd(r) < 0.04f ? Noise(r) * 2f : 0f;
+                    d[s + k] += (lp + crackle) * Mathf.Exp(-t * 18f);
+                }
+            }
+            Pluck(d, 0.45f, Midi(88), 0.4f, 0.15f, false); // little happy "ding"
+            return d;
+        }
+
+        static float[] Snap(System.Random r)
+        {
+            int n = (int)(0.6f * Rate); var d = new float[n];
+            for (int k = 0; k < (int)(0.08f * Rate); k++)
+            {
+                float t = (float)k / Rate;
+                d[k] += (Mathf.Sin(2f * Mathf.PI * 520f * t) + Noise(r) * 0.4f) * Mathf.Exp(-t * 60f);
+            }
+            Pluck(d, 0.06f, Midi(91), 0.5f, 0.25f, false);
             return d;
         }
 
