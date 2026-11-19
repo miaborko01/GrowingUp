@@ -10,12 +10,12 @@ using UnityEngine.InputSystem;
 namespace GrowingUp
 {
     /// <summary>
-    /// Applies the CHILD / ADULT profile to the player: rig scale (body + reach), locomotion
-    /// (speed, step, jump, capsule), and perception (URP volumes, fog, sparkles, hearing, music).
-    /// Never touches the environment.
+    /// Applies the CHILD / ADULT profile (AgeSettings) to the player: rig scale (body + reach), locomotion
+    /// (speed, step, jump, teleport, capsule), and perception (URP volumes, fog, sparkles, butterflies,
+    /// hearing, music). Never touches the environment.
     ///
     /// Blend parameter: 0 = child, 1 = adult. GrowUp() animates 0 -> 1 over the configured duration.
-    /// Debug: press G (keyboard, Game view focused) or the left controller Menu button to toggle,
+    /// Debug: G key (Game view focused) or left controller Menu button toggles the age,
     /// or use the component's context menu (⋮) in the Inspector during Play mode.
     /// </summary>
     [DefaultExecutionOrder(-50)]
@@ -36,6 +36,7 @@ namespace GrowingUp
         public Volume childVolume;
         public Volume adultVolume;
         public ParticleSystem sparkles;
+        public ParticleSystem butterflies;
         public AudioSource childMusic;
         public AudioSource adultMusic;
         public AudioLowPassFilter listenerLowPass;
@@ -47,12 +48,15 @@ namespace GrowingUp
         public bool IsTransitioning { get; private set; }
         /// 0 = child, 1 = adult
         public float Blend { get; private set; }
+        public float RigScale => cameraRig != null ? cameraRig.transform.localScale.x : 1f;
+        public Transform Head => cameraRig != null ? cameraRig.centerEyeAnchor : null;
 
         public event Action<Age> AgeChanged;
         public event Action GrowUpStarted;
 
-        float _sparkleRate = -1f;
+        float _sparkleRate = -1f, _butterflyRate = -1f;
         Coroutine _transition;
+        TeleportInteractor[] _teleporters;
 
         void Awake()
         {
@@ -66,9 +70,11 @@ namespace GrowingUp
                 listenerLowPass = ear.GetComponent<AudioLowPassFilter>();
                 if (listenerLowPass == null) listenerLowPass = ear.AddComponent<AudioLowPassFilter>();
             }
+            if (cameraRig != null) _teleporters = cameraRig.GetComponentsInChildren<TeleportInteractor>(true);
             if (sparkles != null) _sparkleRate = sparkles.emission.rateOverTimeMultiplier;
-            if (childMusic != null && childMusic.clip == null && settings != null && settings.child.music != null) childMusic.clip = settings.child.music;
-            if (adultMusic != null && adultMusic.clip == null && settings != null && settings.adult.music != null) adultMusic.clip = settings.adult.music;
+            if (butterflies != null) _butterflyRate = butterflies.emission.rateOverTimeMultiplier;
+            if (childMusic != null && settings != null && settings.child.music != null) childMusic.clip = settings.child.music;
+            if (adultMusic != null && settings != null && settings.adult.music != null) adultMusic.clip = settings.adult.music;
         }
 
         void Start()
@@ -106,7 +112,7 @@ namespace GrowingUp
         [ContextMenu("Debug: Set Child (instant)")] void CtxChild() => SetAgeImmediate(Age.Child);
         [ContextMenu("Debug: Set Adult (instant)")] void CtxAdult() => SetAgeImmediate(Age.Adult);
 
-        /// Starts the child -> adult transition (used by the GrowUpTrigger at the clearing).
+        /// Starts the child -> adult transition (Phase 3: called when the child eats the berry).
         public void GrowUp()
         {
             if (CurrentAge == Age.Adult || IsTransitioning) return;
@@ -127,6 +133,22 @@ namespace GrowingUp
             ApplyBlend(age == Age.Child ? 0f : 1f);
             CurrentAge = age;
             AgeChanged?.Invoke(age);
+        }
+
+        /// Moves the player (feet) to a world position and facing, through the Meta locomotor so the
+        /// capsule and the camera rig stay in sync. Used by the river respawn and the debug step jumps.
+        public void MovePlayerTo(Vector3 feetPosition, Quaternion facing)
+        {
+            if (locomotor != null)
+            {
+                var pose = new Pose(feetPosition, Quaternion.Euler(0f, facing.eulerAngles.y, 0f));
+                locomotor.HandleLocomotionEvent(new LocomotionEvent(0, pose,
+                    LocomotionEvent.TranslationType.Absolute, LocomotionEvent.RotationType.Absolute));
+            }
+            else if (cameraRig != null)
+            {
+                cameraRig.transform.SetPositionAndRotation(feetPosition, Quaternion.Euler(0f, facing.eulerAngles.y, 0f));
+            }
         }
 
         void StartBlend(float target, Age resultAge)
@@ -161,7 +183,8 @@ namespace GrowingUp
 
             ApplyBody(Mathf.Lerp(c.rigScale, a.rigScale, b), Mathf.Lerp(c.eyeHeight, a.eyeHeight, b), Mathf.Lerp(c.bodyRadius, a.bodyRadius, b));
             ApplyMovement(Mathf.Lerp(c.walkSpeed, a.walkSpeed, b), Mathf.Lerp(c.runMultiplier, a.runMultiplier, b),
-                Mathf.Lerp(c.maxStep, a.maxStep, b), Mathf.Lerp(c.jumpForce, a.jumpForce, b));
+                Mathf.Lerp(c.maxStep, a.maxStep, b), Mathf.Lerp(c.jumpHeight, a.jumpHeight, b),
+                b < 0.5f ? c.teleportEnabled : a.teleportEnabled);
 
             // Vision: cross-fade the two global volumes (they live under the player, not the world)
             if (childVolume != null) { childVolume.sharedProfile = c.volumeProfile; childVolume.weight = 1f - b; }
@@ -174,26 +197,28 @@ namespace GrowingUp
             RenderSettings.fogDensity = fog;
             RenderSettings.fogColor = Color.Lerp(c.fogColor, a.fogColor, b);
 
-            if (sparkles != null)
-            {
-                float s = Mathf.Lerp(c.sparkles ? 1f : 0f, a.sparkles ? 1f : 0f, b);
-                var em = sparkles.emission;
-                if (_sparkleRate < 0f) _sparkleRate = em.rateOverTimeMultiplier;
-                em.rateOverTimeMultiplier = _sparkleRate * s;
-                if (s <= 0.001f) { if (sparkles.isPlaying) sparkles.Stop(true, ParticleSystemStopBehavior.StopEmitting); }
-                else if (!sparkles.isPlaying) sparkles.Play(true);
-            }
+            FadeParticles(sparkles, ref _sparkleRate, Mathf.Lerp(c.sparkles ? 1f : 0f, a.sparkles ? 1f : 0f, b));
+            FadeParticles(butterflies, ref _butterflyRate, Mathf.Lerp(c.butterflies ? 1f : 0f, a.butterflies ? 1f : 0f, b));
 
-            // Hearing: listener low-pass (log blend sounds natural), nature loudness, music cross-fade
+            // Hearing: listener low-pass (log blend), nature loudness, music cross-fade
             if (listenerLowPass != null)
             {
                 listenerLowPass.cutoffFrequency = Mathf.Exp(Mathf.Lerp(Mathf.Log(c.lowPassCutoff), Mathf.Log(a.lowPassCutoff), b));
                 listenerLowPass.enabled = listenerLowPass.cutoffFrequency < 21000f;
             }
             PerceptionMix.Nature = Mathf.Lerp(c.natureGain, a.natureGain, b);
-            // Music: child tune fades out over the first 60 % of the blend, the adult drone fades in over the last 60 %.
             if (childMusic != null) childMusic.volume = c.musicVolume * Mathf.Clamp01(1f - b / 0.6f);
             if (adultMusic != null) adultMusic.volume = a.musicVolume * Mathf.Clamp01((b - 0.4f) / 0.6f);
+        }
+
+        static void FadeParticles(ParticleSystem ps, ref float baseRate, float amount)
+        {
+            if (ps == null) return;
+            var em = ps.emission;
+            if (baseRate < 0f) baseRate = em.rateOverTimeMultiplier;
+            em.rateOverTimeMultiplier = baseRate * amount;
+            if (amount <= 0.001f) { if (ps.isPlaying) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting); }
+            else if (!ps.isPlaying) ps.Play(true);
         }
 
         void ApplyBody(float scale, float eyeHeight, float radius)
@@ -215,7 +240,7 @@ namespace GrowingUp
             if (locomotor != null)
             {
                 locomotor.AutoUpdateHeight = false;
-                locomotor.DefaultHeight = eyeHeight + 0.12f;
+                locomotor.DefaultHeight = eyeHeight / 0.93f;
             }
             if (character != null)
             {
@@ -224,7 +249,7 @@ namespace GrowingUp
             }
         }
 
-        void ApplyMovement(float walk, float runMul, float step, float jump)
+        void ApplyMovement(float walk, float runMul, float step, float jumpHeight, bool teleport)
         {
             if (locomotor != null)
             {
@@ -232,9 +257,13 @@ namespace GrowingUp
                 float k = locomotor.GroundDamping / Mathf.Max(0.0001f, locomotor.Acceleration);
                 locomotor.SpeedFactor = walk * k;
                 locomotor.RunningSpeedFactor = walk * runMul * k;
-                locomotor.JumpForce = jump;
+                // Jump (A/X button in the Meta locomotion block) adds an upward velocity: v = sqrt(2 g h)
+                float g = Mathf.Abs(Physics.gravity.y) * Mathf.Max(0.01f, locomotor.GravityFactor);
+                locomotor.JumpForce = jumpHeight > 0.001f ? Mathf.Sqrt(2f * g * jumpHeight) : 0f;
             }
             if (character != null) character.MaxStep = step;
+            if (_teleporters != null)
+                foreach (var t in _teleporters) if (t != null) t.enabled = teleport;
         }
     }
 }

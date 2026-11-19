@@ -25,7 +25,7 @@ namespace GrowingUp.EditorTools
         public const float BerryZ = 32f;
         public const float PathEndZ = 36f;
         public const float PathWidth = 1.1f;
-        public static readonly Vector3 SpawnPos = new Vector3(0f, 0f, -0.75f);
+        public static readonly Vector3 SpawnPos = new Vector3(0f, 0f, -0.25f); // just off the porch step
         // stepping stones: offsets across the river from RiverZ; index 2 is the GAP (filled by the child's rock)
         public static readonly float[] StoneOffsets = { -0.75f, -0.43f, -0.07f, 0.29f, 0.61f };
         public const int GapIndex = 2;
