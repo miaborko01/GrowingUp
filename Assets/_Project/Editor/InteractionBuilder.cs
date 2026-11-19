@@ -24,6 +24,7 @@ namespace GrowingUp.EditorTools
             BuildBird();
             BuildDandelion();
             BuildFairyRing();
+            BuildBerries();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }
 
@@ -153,6 +154,54 @@ namespace GrowingUp.EditorTools
             m.SetFloat("_ZWrite", 0); m.renderQueue = 3000; m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        // ---------------------------------------------------------------- 5. berries
+        [MenuItem("Growing Up/Build Interactions/5 Berries")]
+        public static void BuildBerries()
+        {
+            var root = StationRoot("Berries");
+            var bushPos = WorldBuilder.BerryBushPos;
+            var berryMat = WorldBuilder.EmissiveMat("M_GlowBerry", new Color(0.9f, 0.12f, 0.4f), new Color(1f, 0.3f, 0.55f) * 2.5f);
+            var leafM = WorldBuilder.Mat("M_BerryLeaf", new Color(0.25f, 0.5f, 0.15f), 0.3f);
+            var path = WorldBuilder.OnPath(WorldBuilder.BerryZ);
+            Vector3 toPath = path - bushPos; toPath.y = 0f; toPath.Normalize();
+
+            var items = new GrabbableItem[7];
+            for (int i = 0; i < items.Length; i++)
+            {
+                // on the bush surface, mostly on the side facing the path, at child mouth/hand height
+                float yaw = Mathf.Atan2(toPath.x, toPath.z) * Mathf.Rad2Deg + R(-75f, 75f);
+                float h = R(0.18f, 0.45f);
+                var dir = Quaternion.Euler(0, yaw, 0) * Vector3.forward;
+                float rr = 0.33f * Mathf.Sqrt(Mathf.Max(0.15f, 1f - Mathf.Pow((h - 0.25f) / 0.4f, 2)));
+                var p = bushPos + dir * rr + Vector3.up * h;
+                var berry = WorldBuilder.Prim(PrimitiveType.Sphere, "GlowBerry_" + i + " (eat me)", root, p, Vector3.one * 0.044f, berryMat, true);
+                WorldBuilder.Prim(PrimitiveType.Sphere, "Leaf", berry.transform, new Vector3(0.25f, 0.55f, 0f), new Vector3(0.6f, 0.12f, 0.35f), leafM, false,
+                    Quaternion.Euler(0, 0, 25f), true);
+                items[i] = MakeGrabbable(berry, 0.01f, true, 0.035f);
+            }
+
+            var glow = new GameObject("BushGlow (sparkles)"); glow.transform.SetParent(root, false);
+            glow.transform.position = bushPos + Vector3.up * 0.3f;
+            var ps = glow.AddComponent<ParticleSystem>(); ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main; main.loop = true; main.playOnAwake = false; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3f); main.startSpeed = new ParticleSystem.MinMaxCurve(0.01f, 0.05f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.02f, 0.045f); main.maxParticles = 80;
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.5f, 0.75f), new Color(1f, 0.9f, 0.5f));
+            var em = ps.emission; em.rateOverTime = 22f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.38f; sh.radiusThickness = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var gr = new Gradient(); gr.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, 0.3f), new GradientAlphaKey(0, 1) });
+            col.color = gr;
+            glow.GetComponent<ParticleSystemRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/M_Sparkle.mat");
+
+            var bb = root.gameObject.AddComponent<BerryBush>();
+            bb.berries = items; bb.bushGlow = ps;
+            bb.appearSound = Sfx(root, "SFX_BerriesAppear", ProceduralAudio.Kind.Chime, 0.55f, root.InverseTransformPoint(bushPos + Vector3.up * 0.3f), 10f);
+            bb.eatSound = Sfx(root, "SFX_BerryCrunch", ProceduralAudio.Kind.Crunch, 1f, Vector3.zero, 6f);
+            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
         }
 
         // ---------------------------------------------------------------- 4. fairy ring
