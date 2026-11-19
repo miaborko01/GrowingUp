@@ -419,7 +419,12 @@ namespace GrowingUp.EditorTools
                 else if (roll < 0.72f) Place(FF + "grass01.prefab", g[3], p, R(0, 360), R(0.45f, 0.85f), false);
                 else if (roll < 0.83f) Place(Nature + "Flowers_01.prefab", g[3], p, R(0, 360), R(1.2f, 2.2f), false);
                 else if (roll < 0.92f) Place(Nature + "Flowers_02.prefab", g[3], p, R(0, 360), R(1.2f, 2.0f), false);
-                else Place(Nature + "Mushroom_0" + (1 + _rng.Next(2)) + ".prefab", g[3], p, R(0, 360), R(1.0f, 2.4f), false);
+                else
+                {
+                    // Mushrooms are SOLID (to the tiny child they are as big as trees): stem capsule collider
+                    var m = Place(Nature + "Mushroom_0" + (1 + _rng.Next(2)) + ".prefab", g[3], p, R(0, 360), R(1.0f, 2.4f), false);
+                    if (m != null) AddStemCollider(m);
+                }
             }
 
             for (int k = 0; k < 30; k++)
@@ -436,6 +441,19 @@ namespace GrowingUp.EditorTools
                 }
             }
             SetStatic(root.gameObject);
+        }
+
+        /// Solid stem for a decorative mushroom (cap stays walk-under for nobody: the capsule covers stem + cap height).
+        public static void AddStemCollider(GameObject mushroom)
+        {
+            var mf = mushroom.GetComponentInChildren<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null) return;
+            var b = mf.sharedMesh.bounds;
+            var cap = mf.gameObject.AddComponent<CapsuleCollider>();
+            cap.direction = 1;
+            cap.radius = Mathf.Max(0.02f, Mathf.Min(b.size.x, b.size.z) * 0.3f);
+            cap.height = b.size.y;
+            cap.center = new Vector3(b.center.x, b.center.y, b.center.z);
         }
 
         static Transform Group(Transform parent, string name)
