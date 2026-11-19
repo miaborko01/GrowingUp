@@ -41,6 +41,10 @@ namespace GrowingUp
         public AudioSource adultMusic;
         public AudioLowPassFilter listenerLowPass;
 
+        [Header("Camera")]
+        [Tooltip("Eye camera near clip plane at adult size (m); scaled by the rig scale (child 0.2 -> 0.01 m).")]
+        public float adultNearClip = 0.05f;
+
         [Header("Debug")]
         public bool debugToggleEnabled = true;
 
@@ -57,6 +61,7 @@ namespace GrowingUp
         float _sparkleRate = -1f, _butterflyRate = -1f;
         Coroutine _transition;
         TeleportInteractor[] _teleporters;
+        Camera[] _eyeCams;
 
         void Awake()
         {
@@ -237,6 +242,9 @@ namespace GrowingUp
                 // The locomotion capsule is a child of the rig; keep it where it was (it works in world units).
                 if (character != null) character.transform.position = capsulePos;
             }
+            // Near clip scales with the body: the tiny child's hands and mouth are only centimetres from the eyes.
+            if (_eyeCams == null) _eyeCams = cameraRig.GetComponentsInChildren<Camera>(true);
+            foreach (var cam in _eyeCams) if (cam != null) { cam.nearClipPlane = Mathf.Max(0.005f, adultNearClip * scale); cam.farClipPlane = 400f; }
             if (locomotor != null)
             {
                 locomotor.AutoUpdateHeight = false;
