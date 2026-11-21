@@ -3,16 +3,14 @@ using UnityEngine;
 namespace GrowingUp
 {
     /// <summary>
-    /// Dandelion (child, step "Dandelion"). A big dandelion stands by the path (huge to the child).
-    /// The child picks it and brings the seed head to their mouth (MouthZone) to blow: the fluffy head
-    /// disappears and the seeds burst away as glowing particles drifting into the air, with a magical
-    /// whoosh. The bare stem stays where the child leaves it (the adult passes it later).
+    /// Dandelion (SIDE QUEST, the dandelion field between the log and the river). Each dandelion is
+    /// huge to the child. Pick one and bring the seed head to the mouth (MouthZone) to blow: the fluffy
+    /// head disappears and the seeds burst away as glowing particles with a magical whoosh. The bare
+    /// stem stays where the child leaves it (the adult passes it later). Not a story step.
     /// Optional later: real microphone breath detection could call Blow() too.
     /// </summary>
-    public class Dandelion : MonoBehaviour, IStoryStation
+    public class Dandelion : MonoBehaviour
     {
-        public StoryStep Step => StoryStep.Dandelion;
-
         public GrabbableItem item;
         [Tooltip("Centre of the fluffy seed head.")]
         public Transform head;
@@ -27,9 +25,7 @@ namespace GrowingUp
 
         void Update()
         {
-            if (Blown || head == null) return;
-            var story = StoryManager.Instance;
-            if (story == null || !story.Is(StoryStep.Dandelion)) return;
+            if (Blown || head == null || item == null || !item.WasEverGrabbed) return;
             if (MouthZone.IsAtMouth(head.position, puffRadius)) Blow();
         }
 
@@ -53,14 +49,7 @@ namespace GrowingUp
                 seedBurst.Play();
             }
             if (whoosh != null) { whoosh.transform.position = head.position; whoosh.Play(); }
-            if (StoryManager.Instance != null) StoryManager.Instance.Complete(StoryStep.Dandelion);
         }
 
-        public void ForceComplete()
-        {
-            if (Blown) return;
-            Blown = true;
-            if (puff != null) puff.SetActive(false);
-        }
     }
 }

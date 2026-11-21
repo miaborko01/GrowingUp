@@ -166,7 +166,7 @@ namespace GrowingUp.EditorTools
             close.transform.localPosition = new Vector3(DoorHalf, 1.0f, 0f);
             hd.closeSound = WorldBuilder.AddAudio(close, ProceduralAudio.Kind.DoorClose, ProceduralAudio.Category.Sfx, 1f, 6, 0.6f, 15f, true, false, false);
             // VO placeholder: the mother inside the house (drop the real recording on this AudioSource)
-            var vo = new GameObject("VO_Mother_GoExplore");
+            var vo = new GameObject("VO_Mother_HaveFun");
             vo.transform.SetParent(house, false);
             vo.transform.localPosition = new Vector3(0f, 1.5f, -3.5f);
             var voSrc = vo.AddComponent<AudioSource>();

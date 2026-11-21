@@ -5,10 +5,10 @@ using UnityEngine.Events;
 namespace GrowingUp
 {
     /// <summary>
-    /// Berries (child, step "Berries"). When the fairy ring is complete, glowing berries pop onto the
-    /// bush and it lights up. The child picks a berry and brings it to their mouth (MouthZone) to eat
-    /// it -> crunch, the step completes and the story moves to GrowingUp.
-    /// PHASE 3 HOOK: onBerryEaten (the growing-up transition will be started from here).
+    /// Main quest 4: the berries (child, step "Berries"). The bush stands in the middle of the fairy
+    /// ring. When the child comes out of the bush tunnel, glowing magical berries pop onto it and it
+    /// lights up. The child picks a berry and brings it to the mouth (MouthZone) to eat it -> crunch,
+    /// the step completes and the story moves to GrowingUp (GrowingUpSequence starts the transformation).
     /// </summary>
     public class BerryBush : MonoBehaviour, IStoryStation
     {
@@ -23,7 +23,7 @@ namespace GrowingUp
         public AudioSource appearSound; // SFX_BerriesAppear
         public AudioSource eatSound;    // SFX_BerryCrunch
 
-        [Header("Phase 3 hook")]
+        [Header("Hook")]
         public UnityEvent onBerryEaten;
 
         public bool Revealed { get; private set; }
@@ -106,7 +106,7 @@ namespace GrowingUp
             if (eatSound != null) { eatSound.transform.position = berry.transform.position; eatSound.Play(); }
             berry.Consume();
             if (bushGlow != null) bushGlow.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            Debug.Log("[Story] Berry eaten -> GrowingUp (the transition itself is Phase 3)");
+            Debug.Log("[Story] Berry eaten -> GrowingUp");
             if (StoryManager.Instance != null) StoryManager.Instance.Complete(StoryStep.Berries);
             onBerryEaten?.Invoke();
         }

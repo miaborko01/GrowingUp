@@ -117,12 +117,15 @@ namespace GrowingUp
         [ContextMenu("Debug: Set Child (instant)")] void CtxChild() => SetAgeImmediate(Age.Child);
         [ContextMenu("Debug: Set Adult (instant)")] void CtxAdult() => SetAgeImmediate(Age.Adult);
 
-        /// Starts the child -> adult transition (Phase 3: called when the child eats the berry).
-        public void GrowUp()
+        /// Starts the child -> adult transition (the GrowingUpSequence calls this when the berry is eaten).
+        public void GrowUp() => GrowUp(-1f);
+
+        /// duration &lt;= 0 = use AgeSettings.transitionDuration.
+        public void GrowUp(float duration)
         {
             if (CurrentAge == Age.Adult || IsTransitioning) return;
             GrowUpStarted?.Invoke();
-            StartBlend(1f, Age.Adult);
+            StartBlend(1f, Age.Adult, duration);
         }
 
         /// Debug only: animate back to the child.
@@ -156,16 +159,16 @@ namespace GrowingUp
             }
         }
 
-        void StartBlend(float target, Age resultAge)
+        void StartBlend(float target, Age resultAge, float duration = -1f)
         {
             if (_transition != null) StopCoroutine(_transition);
-            _transition = StartCoroutine(BlendRoutine(target, resultAge));
+            _transition = StartCoroutine(BlendRoutine(target, resultAge, duration));
         }
 
-        IEnumerator BlendRoutine(float target, Age resultAge)
+        IEnumerator BlendRoutine(float target, Age resultAge, float duration)
         {
             IsTransitioning = true;
-            float from = Blend, dur = settings != null ? Mathf.Max(0.01f, settings.transitionDuration) : 3f;
+            float from = Blend, dur = duration > 0f ? duration : settings != null ? Mathf.Max(0.01f, settings.transitionDuration) : 3f;
             for (float t = 0f; t < 1f; t += Time.deltaTime / dur)
             {
                 float k = settings != null ? settings.transitionCurve.Evaluate(t) : t;

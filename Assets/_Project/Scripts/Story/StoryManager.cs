@@ -7,9 +7,9 @@ using UnityEngine.InputSystem;
 
 namespace GrowingUp
 {
-    public enum StoryStep { Intro, River, Bird, Dandelion, FairyRing, Berries, GrowingUp, AdultReturn, Ending }
+    public enum StoryStep { Intro, Log, River, BushTunnel, Berries, GrowingUp, AdultReturn, Ending }
 
-    /// <summary>Implemented by every interaction along the path (river, bird, dandelion, ...).</summary>
+    /// <summary>Implemented by every main quest along the path (log, river, bush tunnel, berries, ...).</summary>
     public interface IStoryStation
     {
         StoryStep Step { get; }
@@ -21,8 +21,10 @@ namespace GrowingUp
     /// One simple state machine for the whole experience: steps unlock strictly in order.
     /// Interactions call Complete(theirStep) when finished; only the CURRENT step can complete.
     ///
-    /// Debug (Game view focused): number keys 1-8 jump to Intro, River, Bird, Dandelion, FairyRing,
-    /// Berries, GrowingUp, AdultReturn (earlier stations are auto-completed, player is moved to the
+    /// Side quests (glowing mushrooms, dandelion field) are free and not steps.
+    ///
+    /// Debug (Game view focused): number keys 1-8 jump to Intro, Log, River, BushTunnel, Berries,
+    /// GrowingUp, AdultReturn, Ending (earlier stations are auto-completed, player is moved to the
     /// station). N = complete the current step. Also available in the component's context menu.
     /// </summary>
     [DefaultExecutionOrder(-40)]
@@ -53,7 +55,7 @@ namespace GrowingUp
 
         void Start()
         {
-            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
                 if (mb is IStoryStation st) _stations.Add(st);
             Debug.Log("[Story] Start at " + Current + " (" + _stations.Count + " stations)");
             if (startStep != StoryStep.Intro) GoTo(startStep);
@@ -115,12 +117,12 @@ namespace GrowingUp
         }
 
         [ContextMenu("Debug/Go to Intro")] void D0() => GoTo(StoryStep.Intro);
-        [ContextMenu("Debug/Go to River")] void D1() => GoTo(StoryStep.River);
-        [ContextMenu("Debug/Go to Bird")] void D2() => GoTo(StoryStep.Bird);
-        [ContextMenu("Debug/Go to Dandelion")] void D3() => GoTo(StoryStep.Dandelion);
-        [ContextMenu("Debug/Go to Fairy Ring")] void D4() => GoTo(StoryStep.FairyRing);
-        [ContextMenu("Debug/Go to Berries")] void D5() => GoTo(StoryStep.Berries);
-        [ContextMenu("Debug/Go to Adult Return")] void D7() => GoTo(StoryStep.AdultReturn);
+        [ContextMenu("Debug/Go to Log")] void D1() => GoTo(StoryStep.Log);
+        [ContextMenu("Debug/Go to River")] void D2() => GoTo(StoryStep.River);
+        [ContextMenu("Debug/Go to Bush Tunnel")] void D3() => GoTo(StoryStep.BushTunnel);
+        [ContextMenu("Debug/Go to Berries")] void D4() => GoTo(StoryStep.Berries);
+        [ContextMenu("Debug/Go to Growing Up (transformation)")] void D5() => GoTo(StoryStep.GrowingUp);
+        [ContextMenu("Debug/Go to Adult Return")] void D6() => GoTo(StoryStep.AdultReturn);
         [ContextMenu("Debug/Complete current step")] void DN() => Complete(Current);
     }
 }

@@ -32,7 +32,7 @@ namespace GrowingUp
     [RequireComponent(typeof(AudioSource))]
     public class ProceduralAudio : MonoBehaviour
     {
-        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked, DoorClose, Splash, Chirp, Whoosh, Chime, Crunch, Snap }
+        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked, DoorClose, Splash, Chirp, Whoosh, Chime, Crunch, Snap, Bling, Laughter, ChildVoices, Rustle, Scrape, Shimmer }
         public enum Category { Nature, Music, Sfx }
 
         public Kind kind = Kind.Wind;
@@ -95,6 +95,12 @@ namespace GrowingUp
                 case Kind.Whoosh: d = Whoosh(rng); loop = false; break;
                 case Kind.Chime: d = Chime(rng); loop = false; break;
                 case Kind.Crunch: d = Crunch(rng); loop = false; break;
+                case Kind.Bling: d = Bling(rng); loop = false; break;
+                case Kind.Laughter: d = Laughter(rng, 4.5f, 3); loop = false; break;
+                case Kind.ChildVoices: d = Babble(rng, 9f); break;
+                case Kind.Rustle: d = Rustle(rng); loop = false; break;
+                case Kind.Scrape: d = Scrape(rng); loop = false; break;
+                case Kind.Shimmer: d = Shimmer(rng); loop = false; break;
                 default: d = Snap(rng); loop = false; break;
             }
             if (loop && kind != Kind.ChildMusic) d = MakeSeamless(d, (int)(Rate * 0.5f));
@@ -364,6 +370,134 @@ namespace GrowingUp
                 d[k] += (Mathf.Sin(2f * Mathf.PI * 520f * t) + Noise(r) * 0.4f) * Mathf.Exp(-t * 60f);
             }
             Pluck(d, 0.06f, Midi(91), 0.5f, 0.25f, false);
+            return d;
+        }
+
+        static float[] Bling(System.Random r)
+        {
+            // tiny magical "bling": two bright bell notes
+            int n = (int)(1.2f * Rate); var d = new float[n];
+            Pluck(d, 0f, Midi(93), 0.9f, 0.3f, true);
+            Pluck(d, 0.07f, Midi(100), 0.9f, 0.25f, true);
+            Pluck(d, 0.14f, Midi(105), 0.7f, 0.12f, false);
+            return d;
+        }
+
+        // A sung vowel: glottal harmonics shaped by two formants (+ breath). Crude, but reads as a voice.
+        static void Syllable(float[] d, System.Random r, float start, float dur, float f0, float f0End, float f1, float f2, float amp)
+        {
+            int s0 = (int)(start * Rate), len = (int)(dur * Rate);
+            float ph = 0f, lp = 0f;
+            for (int k = 0; k < len && s0 + k < d.Length; k++)
+            {
+                float t = (float)k / len;
+                float f = Mathf.Lerp(f0, f0End, t) * (1f + 0.02f * Mathf.Sin(k * 0.002f));
+                ph += f / Rate;
+                float v = 0f;
+                for (int h = 1; h <= 14; h++)
+                {
+                    float fh = f * h;
+                    float g = Mathf.Exp(-Mathf.Pow((fh - f1) / 180f, 2f)) + 0.6f * Mathf.Exp(-Mathf.Pow((fh - f2) / 260f, 2f)) + 0.05f / h;
+                    v += Mathf.Sin(2f * Mathf.PI * ph * h) * g;
+                }
+                lp += (Noise(r) - lp) * 0.3f;
+                float env = Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * 1.4f)) * Mathf.Exp(-t * 1.5f);
+                d[s0 + k] += (v * 0.25f + lp * 0.35f) * env * amp;
+            }
+        }
+
+        static float[] Laughter(System.Random r, float secs, int kids)
+        {
+            // several children giggling "ha-ha-ha" at different pitches
+            int n = (int)(secs * Rate); var d = new float[n];
+            for (int c = 0; c < kids; c++)
+            {
+                float t = 0.1f + Rnd(r) * 0.6f, pitch = 330f + Rnd(r) * 170f;
+                while (t < secs - 0.6f)
+                {
+                    int ha = 3 + r.Next(0, 5);
+                    for (int i = 0; i < ha && t < secs - 0.3f; i++)
+                    {
+                        float p = pitch * (1f - i * 0.03f);
+                        Syllable(d, r, t, 0.13f, p * 1.08f, p * 0.95f, 850f + Rnd(r) * 150f, 1300f + Rnd(r) * 300f, 0.8f);
+                        t += 0.17f + Rnd(r) * 0.05f;
+                    }
+                    t += 0.5f + Rnd(r) * 1.2f;
+                }
+            }
+            return d;
+        }
+
+        static float[] Babble(System.Random r, float secs)
+        {
+            // distant children's voices playing (loop)
+            int n = (int)(secs * Rate); var d = new float[n];
+            float[,] vowels = { { 750, 1200 }, { 400, 2200 }, { 300, 2700 }, { 500, 900 }, { 650, 1700 } };
+            for (int c = 0; c < 4; c++)
+            {
+                float t = Rnd(r) * 0.8f, pitch = 280f + Rnd(r) * 160f;
+                while (t < secs - 0.5f)
+                {
+                    int words = 2 + r.Next(0, 4);
+                    for (int w = 0; w < words; w++)
+                    {
+                        int v = r.Next(0, 5); float dur = 0.12f + Rnd(r) * 0.15f;
+                        float p = pitch * (0.9f + Rnd(r) * 0.3f);
+                        Syllable(d, r, t, dur, p, p * (0.85f + Rnd(r) * 0.3f), vowels[v, 0], vowels[v, 1], 0.4f);
+                        t += dur + 0.03f;
+                    }
+                    t += 0.3f + Rnd(r) * 1.0f;
+                }
+            }
+            return d;
+        }
+
+        static float[] Rustle(System.Random r)
+        {
+            // leaves and branches pushed aside
+            int n = (int)(1.4f * Rate); var d = new float[n]; float lp = 0f, hp = 0f, prev = 0f;
+            for (int k = 0; k < n; k++)
+            {
+                float t = (float)k / n;
+                float x = Noise(r); hp = 0.85f * (hp + x - prev); prev = x; lp += (hp - lp) * 0.5f;
+                float crackle = Rnd(r) < 0.003f ? Noise(r) * 3f : 0f;
+                float env = Mathf.Clamp01(t * 8f) * Mathf.Exp(-t * 2.5f) * (0.7f + 0.3f * Mathf.Sin(t * 40f));
+                d[k] = (lp + crackle) * env;
+            }
+            return d;
+        }
+
+        static float[] Scrape(System.Random r)
+        {
+            // stone dragged over dirt
+            int n = (int)(0.6f * Rate); var d = new float[n]; float lp = 0f;
+            for (int k = 0; k < n; k++)
+            {
+                float t = (float)k / n;
+                lp += (Noise(r) - lp) * 0.12f;
+                float grit = Rnd(r) < 0.02f ? Noise(r) : 0f;
+                d[k] = (lp * 2f + grit) * Mathf.Sin(Mathf.PI * t);
+            }
+            return d;
+        }
+
+        static float[] Shimmer(System.Random r)
+        {
+            // magical swelling shimmer for the transformation: rising bells that slowly sink and darken
+            int n = (int)(8f * Rate); var d = new float[n];
+            int[] up = { 72, 76, 79, 83, 86, 88, 91, 95 };
+            for (int i = 0; i < 40; i++)
+            {
+                float t = i * 0.17f;
+                int note = up[i % up.Length] - (i / 10) * 5;
+                Pluck(d, t, Midi(note), 1.6f, 0.12f * (1f - i / 48f), true);
+            }
+            for (int k = 0; k < n; k++)
+            {
+                float t = (float)k / Rate;
+                float pad = Mathf.Sin(2f * Mathf.PI * Midi(48) * t) * 0.5f + Mathf.Sin(2f * Mathf.PI * Midi(55) * t) * 0.3f;
+                d[k] += pad * 0.12f * Mathf.Clamp01(t / 2f) * Mathf.Clamp01((8f - t) / 2f);
+            }
             return d;
         }
 

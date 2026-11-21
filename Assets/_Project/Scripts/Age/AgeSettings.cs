@@ -83,7 +83,7 @@ namespace GrowingUp
         public static AgeProfile AdultDefaults() => new AgeProfile
         {
             rigScale = 1f, eyeHeight = 1.65f, bodyRadius = 0.22f,
-            walkSpeed = 1.2f, runMultiplier = 1.5f, maxStep = 0.3f, jumpHeight = 0f, teleportEnabled = true,
+            walkSpeed = 1.2f, runMultiplier = 1.5f, maxStep = 0.5f, jumpHeight = 0f, teleportEnabled = true,
             fog = true, fogColor = new Color(0.58f, 0.62f, 0.66f), fogDensity = 0.035f, sparkles = false, butterflies = false,
             lowPassCutoff = 1400f, natureGain = 0.45f, musicVolume = 0f,
         };

@@ -32,6 +32,16 @@ namespace GrowingUp
             _co = StartCoroutine(ShowRoutine(line, seconds));
         }
 
+        /// Render above the ScreenOverlay (end text on black), ignoring depth.
+        public void DrawOnTop()
+        {
+            if (text == null) return;
+            var m = text.fontMaterial;
+            m.renderQueue = 4100;
+            m.SetFloat("unity_GUIZTestMode", (float)UnityEngine.Rendering.CompareFunction.Always);
+            m.SetFloat("_ZTestMode", (float)UnityEngine.Rendering.CompareFunction.Always);
+        }
+
         public void Hide()
         {
             if (_co != null) StopCoroutine(_co);
