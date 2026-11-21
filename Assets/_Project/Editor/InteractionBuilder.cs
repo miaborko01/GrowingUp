@@ -28,6 +28,7 @@ namespace GrowingUp.EditorTools
             BuildRiverCrossing();
             BuildBushTunnel();
             BuildBerries();
+            BuildAdultDusk();
             BuildStory();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }
@@ -274,6 +275,7 @@ namespace GrowingUp.EditorTools
                 var pr = go.AddComponent<PushableRock>();
                 pr.scrapeSound = scrape;
                 rocks[i] = pr;
+                Highlight(go.transform, new Vector3(0f, 0.5f, 0f), Mathf.Max(sizes[i].x, sizes[i].z) * 0.6f, StoryStep.Log, null);
             }
             // staircase spots for the debug skip: medium rock against the log, low rock in front of it
             var stairs = new Transform[3];
@@ -354,6 +356,7 @@ namespace GrowingUp.EditorTools
             var d = holder.gameObject.AddComponent<Dandelion>();
             d.item = item; d.head = head; d.puff = puff.gameObject; d.seedBurst = burst;
             d.whoosh = Sfx(holder, "SFX_DandelionWhoosh", ProceduralAudio.Kind.Whoosh, 0.9f, Vector3.zero, 10f);
+            Highlight(head, Vector3.zero, 0.08f, null, null, d);
             return d;
         }
 
@@ -370,7 +373,73 @@ namespace GrowingUp.EditorTools
             rc.riverZ = WorldBuilder.RiverZ; rc.halfWidth = WorldBuilder.RiverHalfWidth;
             rc.respawnPoint = GameObject.Find("World/Stations/Station_RiverRespawn").transform;
             rc.splashSound = splashSnd; rc.splashParticles = splash;
+            BuildRiverBridge(root, splash, splashSnd);
+            foreach (Transform st in GameObject.Find("World/River/SteppingStones").transform)
+                if (st.name.StartsWith("SteppingStone")) { var ch = Highlight(st, new Vector3(0f, 1f, 0f), 0.14f, StoryStep.River); ch.followObject = false; }
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+        }
+
+        /// ADULT way back: the river rises and runs faster (stones covered). Logs on the far bank; drop 3
+        /// into the river at the crossing to build a bridge.
+        static void BuildRiverBridge(Transform root, ParticleSystem splash, AudioSource splashSnd)
+        {
+            float rz = WorldBuilder.RiverZ, hw = WorldBuilder.RiverHalfWidth, bx = WorldBuilder.PathX(rz);
+            var bridge = new GameObject("Bridge (adult)").transform; bridge.SetParent(root, false);
+            const float L = 2.5f, Rad = 0.1f;
+            var logMesh = MeshGen.Log("HD_BridgeLog", L, Rad, 41);
+            var mats = WorldBuilder.LogMats();
+            var guideMat = TransparentUnlit("M_GuideLog", new Color(0.85f, 0.85f, 0.8f, 0.18f));
+
+            float[] offs = { 0f, -0.21f, 0.21f };
+            var slots = new Transform[offs.Length]; var guides = new GameObject[offs.Length];
+            for (int i = 0; i < offs.Length; i++)
+            {
+                var s = new GameObject("BridgeSlot_" + i).transform; s.SetParent(bridge, false);
+                s.SetPositionAndRotation(new Vector3(bx + offs[i], 0f, rz), Quaternion.Euler(0f, 90f + (i - 1) * 2f, 0f));
+                slots[i] = s;
+                var g = new GameObject("Guide_" + i + " (where the log goes)"); g.transform.SetParent(s, false);
+                g.AddComponent<MeshFilter>().sharedMesh = logMesh;
+                var gr = g.AddComponent<MeshRenderer>(); gr.sharedMaterial = guideMat; gr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                g.SetActive(false);
+                guides[i] = g;
+            }
+
+            // 4 logs lying on the far bank (the adult comes from that side), one spare
+            var logs = new GrabbableItem[4];
+            for (int i = 0; i < logs.Length; i++)
+            {
+                var go = new GameObject("BridgeLog_" + i + " (adult: grab + drop in the river)");
+                go.transform.SetParent(bridge, false);
+                go.transform.SetPositionAndRotation(new Vector3(bx + 1.6f + R(-0.1f, 0.1f) + (i % 2) * 0.35f, 0.01f, rz + hw + 0.7f + i * 0.34f), Quaternion.Euler(0f, R(-12f, 12f), 0f));
+                go.AddComponent<MeshFilter>().sharedMesh = logMesh;
+                go.AddComponent<MeshRenderer>().sharedMaterials = mats;
+                var cap = go.AddComponent<CapsuleCollider>(); cap.direction = 0; cap.radius = Rad; cap.height = L; cap.center = new Vector3(0f, Rad + 0.01f, 0f);
+                logs[i] = MakeGrabbable(go, 12f, false, 0.1f);
+            }
+
+            // the strong river: a wall along the far bank (adult only) with the crossing blocked until the bridge is built
+            var walls = new GameObject("RiverTooStrong (adult)").transform; walls.SetParent(bridge, false);
+            BoxCollider Wall(string n, float x0, float x1)
+            {
+                var w = new GameObject(n); w.transform.SetParent(walls, false);
+                w.transform.position = new Vector3((x0 + x1) * 0.5f, 1.25f, rz + hw + 0.06f);
+                var b = w.AddComponent<BoxCollider>(); b.size = new Vector3(Mathf.Abs(x1 - x0), 2.5f, 0.15f);
+                return b;
+            }
+            var wl = Wall("BankWall_Left", -24.5f, bx - 0.4f);
+            var wr = Wall("BankWall_Right", bx + 0.4f, 24.5f);
+            var gap = Wall("Crossing_Blocker (until bridge)", bx - 0.4f, bx + 0.4f);
+
+            var rb = bridge.gameObject.AddComponent<RiverBridge>();
+            var water = GameObject.Find("World/River/Water");
+            rb.water = water.transform; rb.waterRenderer = water.GetComponent<Renderer>();
+            var snds = new System.Collections.Generic.List<ProceduralAudio>();
+            foreach (Transform t in GameObject.Find("World/River").transform) if (t.name.StartsWith("RiverSound")) snds.Add(t.GetComponent<ProceduralAudio>());
+            rb.riverSounds = snds.ToArray();
+            rb.logs = logs; rb.slots = slots; rb.guides = guides;
+            rb.gapBlocker = gap; rb.bankWalls = new Collider[] { wl, wr };
+            rb.riverZ = rz; rb.halfWidth = hw;
+            rb.splashFx = splash; rb.splashSound = splashSnd;
         }
 
         // ---------------------------------------------------------------- 4. bush tunnel
@@ -380,7 +449,8 @@ namespace GrowingUp.EditorTools
             var root = StationRoot("BushTunnel");
             float z0 = WorldBuilder.TunnelZ0, z1 = WorldBuilder.TunnelZ1, len = z1 - z0;
             float px = WorldBuilder.PathX((z0 + z1) * 0.5f);
-            const float halfW = 0.3f, ceil = 0.47f, pivotX = 1.8f;
+            // passage fits the 60 cm child (capsule 0.6 m), not the 1.8 m adult
+            const float halfW = 0.34f, ceil = 0.68f, pivotX = 1.9f;
             root.position = new Vector3(px, 0f, z0);
 
             var lining = WorldBuilder.Mat("M_TunnelLeaves", new Color(0.15f, 0.26f, 0.09f), 0.1f);
@@ -440,6 +510,37 @@ namespace GrowingUp.EditorTools
             bt.entranceZ = z0; bt.exitZ = z1; bt.pathX = px;
             bt.leftHalf = left; bt.rightHalf = right; bt.adultBlocker = bc;
             bt.rustleSound = Sfx(root, "SFX_BranchesRustle", ProceduralAudio.Kind.Rustle, 0.9f, new Vector3(0f, 0.8f, len * 0.5f), 10f);
+
+            // child: the tunnel entrance glows so the way through is clear
+            var mouth = new GameObject("TunnelEntranceGlow").transform; mouth.SetParent(root, false); mouth.localPosition = new Vector3(0f, 0f, -0.05f);
+            Highlight(mouth, new Vector3(0f, ceil * 0.5f, 0f), halfW, StoryStep.BushTunnel);
+
+            // ADULT: a grabbable branch on each half, at hand height on the side the adult comes back from
+            var barkMats = WorldBuilder.LogMats();
+            foreach (var side in new[] { -1, 1 })
+            {
+                var half = side < 0 ? left : right;
+                var attach = new GameObject("BranchAttach").transform; attach.SetParent(half, false);
+                attach.position = root.TransformPoint(new Vector3(side * 0.42f, 1.05f, len + 0.12f));
+                attach.rotation = Quaternion.Euler(0f, side * 25f, side * -35f);
+                var br = new GameObject(side < 0 ? "Branch_Left (adult: grab + pull left)" : "Branch_Right (adult: grab + pull right)");
+                br.transform.SetParent(root, false);
+                br.transform.SetPositionAndRotation(attach.position, attach.rotation);
+                var stick = new GameObject("Stick"); stick.transform.SetParent(br.transform, false);
+                stick.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                stick.transform.localScale = new Vector3(0.7f, 0.25f, 0.25f);
+                stick.AddComponent<MeshFilter>().sharedMesh = WorldBuilder.HDLog(1);
+                stick.AddComponent<MeshRenderer>().sharedMaterials = barkMats;
+                stick.transform.localPosition = new Vector3(0f, -0.03f, 0f);
+                WorldBuilder.PlaceHDBush(br.transform, "Leaves", br.transform.TransformPoint(new Vector3(0f, -0.05f, -0.3f)), 0f, new Vector3(0.35f, 0.3f, 0.35f), 2, false);
+                var grabCol = br.AddComponent<CapsuleCollider>(); grabCol.direction = 2; grabCol.radius = 0.05f; grabCol.height = 0.7f;
+                var item = MakeGrabbable(br, 1f, false, 0.12f);
+                var so = new SerializedObject(item.GetComponent<Grabbable>());
+                so.FindProperty("_throwWhenUnselected").boolValue = false;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                var bp = br.AddComponent<BranchPull>();
+                bp.tunnel = bt; bp.side = side; bp.attach = attach;
+            }
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
         }
 
@@ -505,6 +606,7 @@ namespace GrowingUp.EditorTools
                 WorldBuilder.Prim(PrimitiveType.Sphere, "Leaf", berry.transform, new Vector3(0.25f, 0.55f, 0f), new Vector3(0.6f, 0.12f, 0.35f), leafM, false,
                     Quaternion.Euler(0, 0, 25f), true);
                 items[i] = MakeGrabbable(berry, 0.01f, true, 0.035f);
+                Highlight(berry.transform, Vector3.zero, 0.035f, StoryStep.Berries, items[i]);
             }
 
             var glow = new GameObject("BushGlow (sparkles)"); glow.transform.SetParent(root, false);
@@ -527,6 +629,97 @@ namespace GrowingUp.EditorTools
             bb.appearSound = Sfx(root, "SFX_BerriesAppear", ProceduralAudio.Kind.Chime, 0.55f, root.InverseTransformPoint(c + Vector3.up * 0.3f), 12f);
             bb.eatSound = Sfx(root, "SFX_BerryCrunch", ProceduralAudio.Kind.Crunch, 1f, Vector3.zero, 6f);
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+        }
+
+        // ---------------------------------------------------------------- adult: mosquitoes + dusk
+        [MenuItem("Growing Up/Build Interactions/7 Adult dusk (mosquitoes, owls, no magic)")]
+        public static void BuildAdultDusk()
+        {
+            var root = StationRoot("AdultDusk");
+            // mosquitoes between the river and the log
+            var ms = root.gameObject.AddComponent<MosquitoSwarm>();
+            ms.zMin = WorldBuilder.LogZ + 0.4f; ms.zMax = WorldBuilder.RiverZ - WorldBuilder.RiverHalfWidth - 0.2f;
+            var dark = new Color(0.04f, 0.04f, 0.04f, 0.9f);
+            var sw = new GameObject("Mosquitoes").AddComponent<ParticleSystem>(); sw.transform.SetParent(root, false);
+            sw.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var m = sw.main; m.loop = true; m.playOnAwake = false; m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(2f, 4f); m.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.2f);
+            m.startSize = new ParticleSystem.MinMaxCurve(0.007f, 0.013f); m.startColor = dark; m.maxParticles = 70;
+            var em = sw.emission; em.rateOverTime = 0f;
+            var sh = sw.shape; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.35f; sh.radiusThickness = 0.6f;
+            var no = sw.noise; no.enabled = true; no.strength = 0.35f; no.frequency = 1.6f; no.scrollSpeed = 1f;
+            sw.GetComponent<ParticleSystemRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/M_Droplet.mat");
+            var sc = Burst(root, "SwatScatter", dark, dark, 18, 1.2f, 2.6f, 0.007f, 0.012f, 0.6f, 0f, false);
+            var scs = sc.shape; scs.shapeType = ParticleSystemShapeType.Sphere; scs.radius = 0.1f;
+            ms.swarm = sw; ms.scatter = sc;
+            var bz = new GameObject("SFX_MosquitoBuzz"); bz.transform.SetParent(root, false);
+            var bsrc = WorldBuilder.AddAudio(bz, ProceduralAudio.Kind.Buzz, ProceduralAudio.Category.Sfx, 0.5f, 3, 0.1f, 3f, true, true, false);
+            bz.GetComponent<ProceduralAudio>().controlVolume = false;
+            ms.buzz = bsrc;
+
+            // dusk: owls hooting (adult only) and the child's magic hidden for the adult
+            var gate = root.gameObject.AddComponent<AgeGate>();
+            var owls = new System.Collections.Generic.List<AudioSource>();
+            float[] zs = { 2.5f, 9f, 16f, 23f };
+            for (int i = 0; i < zs.Length; i++)
+            {
+                var o = new GameObject("SFX_Owl_" + i); o.transform.SetParent(root, false);
+                o.transform.position = WorldBuilder.OnPath(zs[i], (i % 2 == 0 ? -1f : 1f) * R(4f, 7f)) + Vector3.up * R(4f, 6f);
+                var src = WorldBuilder.AddAudio(o, ProceduralAudio.Kind.Owl, ProceduralAudio.Category.Sfx, 0.6f, 50 + i * 13, 2f, 30f, true, true, false);
+                o.GetComponent<ProceduralAudio>().controlVolume = false;
+                owls.Add(src);
+            }
+            gate.adultOnlySounds = owls.ToArray(); gate.adultVolume = 0.55f;
+            var magic = new System.Collections.Generic.List<GameObject>();
+            foreach (var path in new[] { "World/Interactions/FairyRingBerries/FairyRing (mushrooms)/RingGlow (ground)",
+                                         "World/Interactions/FairyRingBerries/FairyRing (mushrooms)/FairyMotes",
+                                         "World/Interactions/FairyRingBerries/BushGlow (sparkles)" })
+            { var g = GameObject.Find(path); if (g != null) magic.Add(g); }
+            gate.childOnly = magic.ToArray();
+            EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+        }
+
+        /// Child-only magical glow around an interactable: a soft pulsing halo + small rising sparkles.
+        public static ChildHighlight Highlight(Transform target, Vector3 localCenter, float radius, StoryStep? step = null,
+            GrabbableItem item = null, Dandelion dandelion = null)
+        {
+            var old = target.Find("ChildGlow"); if (old != null) Object.DestroyImmediate(old.gameObject);
+            var col = new Color(1f, 0.88f, 0.55f);
+            var halo = new GameObject("ChildGlow").AddComponent<ParticleSystem>();
+            halo.transform.SetParent(target, false); halo.transform.localPosition = localCenter;
+            halo.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var m = halo.main; m.loop = true; m.playOnAwake = false; m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.scalingMode = ParticleSystemScalingMode.Shape;
+            m.startLifetime = 1.6f; m.startSpeed = 0f; m.startSize = new ParticleSystem.MinMaxCurve(radius * 3.0f, radius * 3.6f);
+            m.startColor = new Color(col.r, col.g, col.b, 0.38f); m.maxParticles = 8;
+            var em = halo.emission; em.rateOverTime = 3f;
+            var sh = halo.shape; sh.enabled = false;
+            var c1 = halo.colorOverLifetime; c1.enabled = true;
+            var g1 = new Gradient(); g1.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                new[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(1, 0.5f), new GradientAlphaKey(0, 1) });
+            c1.color = g1;
+            var hr = halo.GetComponent<ParticleSystemRenderer>(); hr.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/M_Sparkle.mat");
+            hr.maxParticleSize = 5f;
+
+            var sp = new GameObject("Sparkles").AddComponent<ParticleSystem>();
+            sp.transform.SetParent(halo.transform, false);
+            sp.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var sm = sp.main; sm.loop = true; sm.playOnAwake = false; sm.simulationSpace = ParticleSystemSimulationSpace.World;
+            sm.scalingMode = ParticleSystemScalingMode.Shape;
+            sm.startLifetime = new ParticleSystem.MinMaxCurve(1f, 2f); sm.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.06f);
+            sm.startSize = new ParticleSystem.MinMaxCurve(0.008f, 0.02f); sm.startColor = new Color(1f, 0.95f, 0.7f, 1f); sm.maxParticles = 40;
+            var sem = sp.emission; sem.rateOverTime = 16f;
+            var ssh = sp.shape; ssh.shapeType = ParticleSystemShapeType.Sphere; ssh.radius = radius; ssh.radiusThickness = 0.2f;
+            var vel = sp.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(0f); vel.y = new ParticleSystem.MinMaxCurve(0.06f); vel.z = new ParticleSystem.MinMaxCurve(0f);
+            var c2 = sp.colorOverLifetime; c2.enabled = true; c2.color = g1;
+            var spr = sp.GetComponent<ParticleSystemRenderer>(); spr.sharedMaterial = hr.sharedMaterial;
+
+            var ch = target.gameObject.AddComponent<ChildHighlight>();
+            ch.fx = halo; ch.followObject = false;
+            if (step.HasValue) { ch.onlyDuringStep = true; ch.step = step.Value; }
+            ch.item = item; ch.dandelion = dandelion;
+            return ch;
         }
 
         static Material AdditiveMat(string name, Texture2D tex, Color c)
@@ -630,6 +823,9 @@ namespace GrowingUp.EditorTools
                                  new GradientColorKey(new Color(0.55f, 0.45f, 0.75f), 0.7f), new GradientColorKey(new Color(0.08f, 0.08f, 0.16f), 1f) },
                          new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
             gu.fxColour = grad;
+            gu.sunsetIntensity = 0.85f; gu.sunsetElevation = 9f; gu.sunsetAmbient = 0.8f; gu.sunsetColour = new Color(1f, 0.58f, 0.32f);
+            gu.lateLine = "<i>\"Oh, it's getting late. I should go home.\"</i>";
+            gu.houseLine = "<i>\"It's been so long. I wonder if the old house is still there.\"</i>";
 
             // Ending
             var en = Child(story, "Ending").GetComponent<EndingSequence>();

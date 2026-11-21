@@ -83,6 +83,8 @@ namespace GrowingUp
         {
             if (!Revealed) return;
             float k = 2.6f + 1.4f * Mathf.Sin(Time.time * 2.5f);
+            var ageC = AgeController.Instance;
+            if (ageC != null) k *= 1f - ageC.Blend; // the glow is the child's magic: gone for the adult
             foreach (var b in berries)
             {
                 if (b == null || !b.gameObject.activeInHierarchy) continue;

@@ -26,6 +26,8 @@ namespace GrowingUp
         void Update()
         {
             if (Blown || head == null || item == null || !item.WasEverGrabbed) return;
+            var age = AgeController.Instance;
+            if (age != null && age.CurrentAge != Age.Child) return; // no magic for the adult
             if (MouthZone.IsAtMouth(head.position, puffRadius)) Blow();
         }
 

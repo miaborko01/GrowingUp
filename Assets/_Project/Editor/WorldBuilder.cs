@@ -23,6 +23,7 @@ namespace GrowingUp.EditorTools
         public const float DandelionZ0 = 6.6f, DandelionZ1 = 10.2f;
         public const float RiverZ = 13f;
         public const float RiverHalfWidth = 0.92f;
+        // The CHILD is 60 cm tall: every mushroom is smaller (max ~0.45 m); bushes, the log and grass are big.
         // stepping stones are this far to the RIGHT (+x) of the path
         public const float StonesSide = 2.3f;
         public const float TunnelZ0 = 18.5f, TunnelZ1 = 21.5f;
@@ -549,7 +550,7 @@ namespace GrowingUp.EditorTools
                 var p = OnPath(z, side * R(0.62f, 1.05f));
                 if (InHouseArea(p, 0f) || InRiver(p, 0.35f) || InStation(p, 0.1f)) continue;
                 int st = R() < 0.45f ? 0 : R() < 0.55f ? 1 : 2;
-                PlaceHDShroom(shrooms, p, R(0, 360), R(0.22f, 0.5f), st, _rng.Next(2));
+                PlaceHDShroom(shrooms, p, R(0, 360), R(0.18f, 0.42f), st, _rng.Next(2));
                 if (R() < 0.45f) PlaceHDShroom(shrooms, p + new Vector3(R(-0.12f, 0.12f), 0f, R(-0.12f, 0.12f)), R(0, 360), R(0.1f, 0.2f), st, _rng.Next(2));
             }
 
@@ -570,7 +571,7 @@ namespace GrowingUp.EditorTools
                 {
                     // Mushrooms are SOLID (to the tiny child they are as big as trees): stem capsule collider
                     int st = R() < 0.4f ? 0 : R() < 0.5f ? 1 : 2;
-                    PlaceHDShroom(shrooms, p, R(0, 360), R(0.2f, 0.6f), st, _rng.Next(2));
+                    PlaceHDShroom(shrooms, p, R(0, 360), R(0.15f, 0.42f), st, _rng.Next(2));
                 }
             }
 

@@ -32,7 +32,7 @@ namespace GrowingUp
     [RequireComponent(typeof(AudioSource))]
     public class ProceduralAudio : MonoBehaviour
     {
-        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked, DoorClose, Splash, Chirp, Whoosh, Chime, Crunch, Snap, Bling, Laughter, ChildVoices, Rustle, Scrape, Shimmer }
+        public enum Kind { Wind, River, Birds, ChildMusic, AdultDrone, DoorLocked, DoorClose, Splash, Chirp, Whoosh, Chime, Crunch, Snap, Bling, Laughter, ChildVoices, Rustle, Scrape, Shimmer, Owl, Buzz }
         public enum Category { Nature, Music, Sfx }
 
         public Kind kind = Kind.Wind;
@@ -101,6 +101,8 @@ namespace GrowingUp
                 case Kind.Rustle: d = Rustle(rng); loop = false; break;
                 case Kind.Scrape: d = Scrape(rng); loop = false; break;
                 case Kind.Shimmer: d = Shimmer(rng); loop = false; break;
+                case Kind.Owl: d = Owl(rng, 16f); break;
+                case Kind.Buzz: d = Buzz(rng, 4f); break;
                 default: d = Snap(rng); loop = false; break;
             }
             if (loop && kind != Kind.ChildMusic) d = MakeSeamless(d, (int)(Rate * 0.5f));
@@ -497,6 +499,45 @@ namespace GrowingUp
                 float t = (float)k / Rate;
                 float pad = Mathf.Sin(2f * Mathf.PI * Midi(48) * t) * 0.5f + Mathf.Sin(2f * Mathf.PI * Midi(55) * t) * 0.3f;
                 d[k] += pad * 0.12f * Mathf.Clamp01(t / 2f) * Mathf.Clamp01((8f - t) / 2f);
+            }
+            return d;
+        }
+
+        static float[] Owl(System.Random r, float secs)
+        {
+            // tawny-owl style "hoo... hoo-hoo-hooo" twice per loop, low and breathy
+            int n = (int)(secs * Rate); var d = new float[n];
+            foreach (var start in new[] { 1.0f, 8.5f })
+            {
+                float f = 360f + Rnd(r) * 40f;
+                float[] at = { 0f, 1.1f, 1.45f, 1.8f }; float[] len = { 0.6f, 0.25f, 0.25f, 0.9f };
+                for (int k = 0; k < at.Length; k++)
+                {
+                    int s0 = (int)((start + at[k]) * Rate), ln = (int)(len[k] * Rate); float ph = 0f, lp = 0f;
+                    for (int i = 0; i < ln && s0 + i < n; i++)
+                    {
+                        float t = (float)i / ln;
+                        float ff = f * (1f + 0.04f * Mathf.Sin(t * Mathf.PI) - (k == 3 ? 0.06f * t : 0f) + 0.01f * Mathf.Sin(i * 0.004f));
+                        ph += ff / Rate; lp += (Noise(r) - lp) * 0.05f;
+                        float env = Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * 1.3f)) * (k == 3 ? Mathf.Exp(-t * 1.2f) : 1f);
+                        d[s0 + i] += (Mathf.Sin(2f * Mathf.PI * ph) + 0.15f * Mathf.Sin(4f * Mathf.PI * ph) + lp * 0.6f) * env * 0.5f;
+                    }
+                }
+            }
+            return d;
+        }
+
+        static float[] Buzz(System.Random r, float secs)
+        {
+            // mosquito whine: thin buzzy tone ~600 Hz with drifting pitch
+            int n = (int)(secs * Rate); var d = new float[n]; float ph = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / Rate;
+                float f = 610f + 45f * Mathf.Sin(t * 1.3f) + 20f * Mathf.Sin(t * 5.1f);
+                ph += f / Rate; ph -= Mathf.Floor(ph);
+                float saw = ph * 2f - 1f;
+                d[i] = (saw * 0.6f + Mathf.Sin(2f * Mathf.PI * ph * 2f) * 0.3f) * (0.7f + 0.3f * Mathf.Sin(t * 23f));
             }
             return d;
         }

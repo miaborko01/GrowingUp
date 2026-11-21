@@ -20,7 +20,10 @@ PLACEHOLDERS - replace when you have better sounds
   World/Interactions/Log/SFX_RockScrape                        dragging a rock
   World/Interactions/DandelionField/Dandelion_N/SFX_DandelionWhoosh   blowing a dandelion (one per dandelion)
   World/Interactions/RiverCrossing/SFX_Splash                  child falls in the river
-  World/Interactions/BushTunnel/SFX_BranchesRustle             adult pushes the branches aside
+  World/Interactions/BushTunnel/SFX_BranchesRustle             adult pulls the branches aside
+  World/Interactions/RiverCrossing/Bridge (adult) - uses SFX_Splash when a log lands in the river
+  World/Interactions/AdultDusk/SFX_MosquitoBuzz                mosquitoes around the adult's head
+  World/Interactions/AdultDusk/SFX_Owl_0..3                    owls at dusk (adult only)
   World/Interactions/FairyRingBerries/SFX_BerriesAppear        glowing berries appear on the bush
   World/Interactions/FairyRingBerries/SFX_BerryCrunch          eating the berry
 

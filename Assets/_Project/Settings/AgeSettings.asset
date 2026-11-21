@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: AgeSettings
   m_EditorClassIdentifier: Assembly-CSharp::GrowingUp.AgeSettings
   child:
-    rigScale: 0.2
-    eyeHeight: 0.35
-    bodyRadius: 0.05
-    walkSpeed: 0.6
-    runMultiplier: 1.5
-    maxStep: 0.04
+    rigScale: 0.333
+    eyeHeight: 0.56
+    bodyRadius: 0.09
+    walkSpeed: 1.5
+    runMultiplier: 1.4
+    maxStep: 0.06
     jumpHeight: 0.3
     teleportEnabled: 0
     volumeProfile: {fileID: 11400000, guid: 029b56aecddd44111bf82ae8224cc4c5, type: 2}
@@ -33,24 +33,24 @@ MonoBehaviour:
     music: {fileID: 0}
   adult:
     rigScale: 1
-    eyeHeight: 1.65
+    eyeHeight: 1.68
     bodyRadius: 0.22
-    walkSpeed: 1.2
-    runMultiplier: 1.5
-    maxStep: 0.3
-    jumpHeight: 0
-    teleportEnabled: 1
+    walkSpeed: 0.8
+    runMultiplier: 1.3
+    maxStep: 0.35
+    jumpHeight: 0.55
+    teleportEnabled: 0
     volumeProfile: {fileID: 11400000, guid: 8a513beaa7bcf4d1183c1f2bae1d1b22, type: 2}
     fog: 1
-    fogColor: {r: 0.58, g: 0.62, b: 0.66, a: 1}
-    fogDensity: 0.035
+    fogColor: {r: 0.66, g: 0.58, b: 0.54, a: 1}
+    fogDensity: 0.022
     sparkles: 0
     butterflies: 0
     lowPassCutoff: 1400
     natureGain: 0.45
-    musicVolume: 0
+    musicVolume: 0.3
     music: {fileID: 0}
-  transitionDuration: 3.5
+  transitionDuration: 7
   transitionCurve:
     serializedVersion: 2
     m_Curve:

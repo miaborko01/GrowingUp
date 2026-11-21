@@ -74,18 +74,20 @@ namespace GrowingUp
 
         public static AgeProfile ChildDefaults() => new AgeProfile
         {
-            rigScale = 0.2f, eyeHeight = 0.35f, bodyRadius = 0.05f,
-            walkSpeed = 0.6f, runMultiplier = 1.5f, maxStep = 0.04f, jumpHeight = 0.3f, teleportEnabled = false,
+            // 60 cm tall child (1.8 m adult x 0.333): taller than every mushroom, small next to bushes and logs
+            rigScale = 0.333f, eyeHeight = 0.56f, bodyRadius = 0.09f,
+            walkSpeed = 1.5f, runMultiplier = 1.4f, maxStep = 0.06f, jumpHeight = 0.3f, teleportEnabled = false,
             fog = false, fogDensity = 0f, sparkles = true, butterflies = true,
             lowPassCutoff = 22000f, natureGain = 1.4f, musicVolume = 0.35f,
         };
 
         public static AgeProfile AdultDefaults() => new AgeProfile
         {
-            rigScale = 1f, eyeHeight = 1.65f, bodyRadius = 0.22f,
-            walkSpeed = 1.2f, runMultiplier = 1.5f, maxStep = 0.5f, jumpHeight = 0f, teleportEnabled = true,
-            fog = true, fogColor = new Color(0.58f, 0.62f, 0.66f), fogDensity = 0.035f, sparkles = false, butterflies = false,
-            lowPassCutoff = 1400f, natureGain = 0.45f, musicVolume = 0f,
+            // 1.8 m adult: slow and careful, big enough to jump the log, too big for the bush tunnel
+            rigScale = 1f, eyeHeight = 1.68f, bodyRadius = 0.22f,
+            walkSpeed = 0.8f, runMultiplier = 1.3f, maxStep = 0.35f, jumpHeight = 0.55f, teleportEnabled = false,
+            fog = true, fogColor = new Color(0.66f, 0.58f, 0.54f), fogDensity = 0.022f, sparkles = false, butterflies = false,
+            lowPassCutoff = 1400f, natureGain = 0.45f, musicVolume = 0.3f,
         };
     }
 }

@@ -10,7 +10,8 @@ namespace GrowingUp
     ///     voice echoes ("Go have fun, don't be late!") with children's laughter and voices.
     ///  3. The sun sets (world time of day, not the player's perception).
     ///  4. Inner monologue: "Oh... just as tasty as I remember." The player turns around (towards the
-    ///     house, where the sun is going down): "Oh, it's getting late. I should go home." -> AdultReturn.
+    ///     house, where the sun is going down): "Oh, it's getting late. I should go home." "It's been so
+    ///     long. I wonder if the old house is still there." -> AdultReturn.
     ///
     /// PLACEHOLDER AUDIO: VO_Mother_Echo (uses the mother's clip from the intro if one is set),
     /// SFX_ChildrenLaughter, SFX_ChildrenVoices, SFX_TransformShimmer.
@@ -42,16 +43,18 @@ namespace GrowingUp
         [Header("Sunset (world)")]
         public Light sun;
         public Transform house;
-        public Color sunsetColour = new Color(1f, 0.52f, 0.28f);
-        public float sunsetIntensity = 0.65f;
-        public float sunsetElevation = 5f;
-        public float sunsetAmbient = 0.55f;
+        public Color sunsetColour = new Color(1f, 0.58f, 0.32f);
+        [Tooltip("Warm sunset light (not night): the adult walks home in the evening.")]
+        public float sunsetIntensity = 0.85f;
+        public float sunsetElevation = 9f;
+        public float sunsetAmbient = 0.8f;
         public float sunsetSeconds = 9f;
 
         [Header("Lines")]
         public string echoLine = "<i>...go have fun... don't be late...</i>";
         public string tastyLine = "<i>\"Oh... just as tasty as I remember.\"</i>";
         public string lateLine = "<i>\"Oh, it's getting late. I should go home.\"</i>";
+        public string houseLine = "<i>\"It's been so long. I wonder if the old house is still there.\"</i>";
 
         Quaternion _noonRot; Color _noonCol; float _noonInt, _noonAmb;
         bool _started, _done;
@@ -69,6 +72,14 @@ namespace GrowingUp
         void OnStep(StoryStep s)
         {
             if (s == StoryStep.GrowingUp && !_started) StartCoroutine(Run());
+            else if (s < StoryStep.GrowingUp && (_started || _done))
+            {
+                // debug jump back to a child step: daylight again
+                StopAllCoroutines();
+                _started = _done = false;
+                ApplySun(0f);
+                if (ScreenOverlay.Instance != null) ScreenOverlay.Instance.Set(Color.clear);
+            }
         }
 
         IEnumerator Run()
@@ -94,8 +105,10 @@ namespace GrowingUp
                 yield return null;
             }
             yield return new WaitForSeconds(0.8f);
-            Say(lateLine, 4f);
-            yield return new WaitForSeconds(4.2f);
+            Say(lateLine, 3.6f);
+            yield return new WaitForSeconds(3.9f);
+            Say(houseLine, 4.4f);
+            yield return new WaitForSeconds(4.6f);
             _done = true;
             if (StoryManager.Instance != null) StoryManager.Instance.Complete(StoryStep.GrowingUp);
         }
