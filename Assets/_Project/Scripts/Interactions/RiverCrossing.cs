@@ -22,6 +22,9 @@ namespace GrowingUp
         public float waterLevel = 0.035f;
 
         [Header("Rock puzzle")]
+        [Tooltip("On = the loose rock already sits in the gap at start, so the stepping-stone path is complete " +
+                 "and the child only has to jump across. Off = the child must carry the rock into the gap.")]
+        public bool startWithRockPlaced = true;
         public GrabbableItem looseRock;
         public Transform gapSlot;
         [Tooltip("Released within this horizontal distance (m) of the gap -> snaps in.")]
@@ -41,6 +44,11 @@ namespace GrowingUp
 
         float _rockInWaterTime;
         bool _respawning;
+
+        void Start()
+        {
+            if (startWithRockPlaced && !RockPlaced && looseRock != null && gapSlot != null) PlaceRock(false);
+        }
 
         void Update()
         {
