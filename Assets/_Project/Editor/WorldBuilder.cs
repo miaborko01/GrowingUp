@@ -336,9 +336,11 @@ namespace GrowingUp.EditorTools
             go.AddComponent<MeshRenderer>().sharedMaterials = ShroomMats(style);
             if (collider)
             {
-                // solid stem (to the tiny child mushrooms are like trees)
+                // solid: the collider covers the whole cap (mushrooms are lower than the 60 cm child, so the
+                // body would otherwise slide into the cap), plus the stem below it
+                float capR = style == 1 ? 0.42f : style == 2 ? 0.22f : 0.45f;
                 var cap = go.AddComponent<CapsuleCollider>();
-                cap.direction = 1; cap.radius = style == 1 ? 0.15f : style == 2 ? 0.07f : 0.1f; cap.height = 1f; cap.center = new Vector3(0f, 0.5f, 0f);
+                cap.direction = 1; cap.radius = capR * 0.9f; cap.height = Mathf.Max(1f, capR * 1.8f); cap.center = new Vector3(0f, 0.5f, 0f);
             }
             return go;
         }

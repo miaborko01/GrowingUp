@@ -40,6 +40,10 @@ namespace GrowingUp
         public ParticleSystem splashFx;
         public UnityEvent onBridgeComplete;
 
+        /// Layer for a log while it is carried: not in the player's collision mask, so a 2.5 m log held
+        /// in front of the body doesn't stop the adult from walking.
+        public const int CarriedLayer = 4;
+
         public int Placed { get; private set; }
         public bool Done => slots != null && Placed >= slots.Length;
 
@@ -74,7 +78,16 @@ namespace GrowingUp
                 _grabOn = adult;
                 foreach (var l in logs) if (l != null && !l.Locked) l.SetGrabEnabled(adult); // too heavy for the child
             }
-            foreach (var g in guides) if (g != null && g.activeSelf != (adult && !Done && System.Array.IndexOf(guides, g) == Placed)) g.SetActive(adult && !Done && System.Array.IndexOf(guides, g) == Placed);
+            // guided: only the outline of the NEXT log's place is shown
+            for (int i = 0; guides != null && i < guides.Length; i++)
+            {
+                bool show = adult && !Done && i == Placed;
+                if (guides[i] != null && guides[i].activeSelf != show) guides[i].SetActive(show);
+            }
+
+            foreach (var l in logs)
+                if (l != null && !l.Locked && l.IsHeld != (l.gameObject.layer == CarriedLayer))
+                    l.gameObject.layer = l.IsHeld ? CarriedLayer : 0; // the log's own collider lives on the root
 
             if (!adult || Done) return;
             foreach (var l in logs)
@@ -101,7 +114,7 @@ namespace GrowingUp
         void UpdateGuides()
         {
             if (guides == null) return;
-            for (int i = 0; i < guides.Length; i++) if (guides[i] != null) guides[i].SetActive(false);
+            for (int i = 0; guides != null && i < guides.Length; i++) if (guides[i] != null) guides[i].SetActive(false);
         }
 
         void ApplyFlood(float b)
